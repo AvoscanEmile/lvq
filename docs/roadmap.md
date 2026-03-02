@@ -137,6 +137,7 @@ The roadmap is structured from foundational operations (`provision`) to advanced
 * Verify transaction journaling and rollback across workflows
 * Comprehensive unit and integration tests
 * Enterprise and automation readiness
+* Perform an architectural audit to refactor the project into a clear SoC structure
 
 **Success Metric:** lvquick 1.0 provides deterministic, auditable, and production-ready transactional storage operations.
 
