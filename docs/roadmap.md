@@ -1,4 +1,4 @@
-# **lvquick Roadmap v1.0**
+# **lvquick Roadmap to v1.0**
 
 ## **Introduction**
 
