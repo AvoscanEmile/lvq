@@ -1,6 +1,12 @@
 [package]
 name = "lvq"
 version = "0.1.0"
+authors = ["Emile Avoscan"]
 edition = "2024"
+description = "A high-performance, transactional LVM orchestration utility designed for deterministic storage provisioning."
+repository = "https://github.com/AvoscanEmile/lvq"
+license = "MIT OR Apache-2.0"
 
-[dependencies]
+[[bin]]
+name = "lvq"
+path = "src/main.rs"
