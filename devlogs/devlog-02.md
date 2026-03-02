@@ -34,6 +34,26 @@ The relationship between user requests and system actions was formalized using `
 
 A top-level `Action` struct was defined to encapsulate the `Command::Provision` intent. This structure ensures that the entire provisioning lifecycle—from identifying physical volumes (`pvs`) to setting the Physical Extent size (`pe_size`) and defining multiple logical volumes—is treated as a single, coherent unit of work.
 
+### Project Workspace & Modularity
+
+The directory structure was initialized to enforce a clear boundary between the application's entry point and its core domain logic. A namespaced approach was chosen to ensure the "Skeleton" remains isolated from the eventual CLI and Shell-execution layers.
+
+* **Core Logic Encapsulation**: A `core/` module was established to house the "System Truth." This allows the orchestrator’s rules to be imported as a library independently of the binary’s frontend.
+
+**Initial File Tree:**
+
+```text
+lvq/
+├── Cargo.toml        # Project manifest
+├── Cargo.lock        # Version-locked dependencies for reproducibility
+└── src/
+    ├── main.rs       # CLI Entry point
+    └── core/         # Domain Logic 
+        ├── mod.rs    # Module gatekeeper
+        └── skel.rs   # Main Types (SizeUnit, Filesystem, Call)
+
+```
+
 ### Challenges & Resolutions
 
 **Challenge**: Ambiguity in how LVM handles rounding when users provide human-readable strings (e.g., "10G").
