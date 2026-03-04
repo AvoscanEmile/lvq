@@ -1,6 +1,9 @@
 mod core;
+mod planner;
+mod parser;
+mod verifier;
 
-use crate::core::skel::Command;
+use crate::core::Command;
 
 fn main() {
     println!("lvquick v0.1.0 - Transactional LVM Manager");

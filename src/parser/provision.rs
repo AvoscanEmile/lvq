@@ -1,37 +1,6 @@
-use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
-use crate::core::skel::{Action, Command, SizeUnit, LvRequest};
-
-pub fn parse_cli() -> Result<Action, String> {
-    let args: Vec<String> = env::args().collect();
-    let mut subcommand: &str = "";
-    let mut auto_confirm: bool = false; 
-
-    if args.len() < 2 {  
-        return Err("Usage: lvq <command> [options]".to_string());  
-    }  
-
-    for i in 1..args.len() {
-        let current = &args[i];
-        let previous = &args[i-1];
-
-        if subcommand.is_empty() && !current.starts_with('-') && (!previous.starts_with('-') || previous == "-y" || previous == "--auto-confirm")  {
-            subcommand = current;
-        }
-
-        if current == "-y" || current == "--auto-confirm" {
-            auto_confirm = true;
-        }
-    }
-    
-    let command = match subcommand.as_str() {
-        "provision" => parse_provision(&args)?,
-        _ => return Err(format!("Unknown command: {}", subcommand)),
-    };
-
-    Ok(Action { command, auto_confirm })
-}
+use crate::core::{Command, SizeUnit, LvRequest};
 
 pub fn parse_provision(args: &[String]) -> Result<Command, String> {
 
