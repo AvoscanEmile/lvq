@@ -35,21 +35,20 @@ pub fn plan_provision(
             match fs_mount.fs {
                 Filesystem::Swap => {
                     plan.push(Call::MkSwap(device_path.clone()));
+                    plan.push(Call::Fstab { device: device_path.clone(), path: PathBuf::from("none"), fs: fs_mount.fs.clone() });
                 }
                 _ => {
                     plan.push(Call::Mkfs {
                         device: device_path.clone(),
-                        fs: fs_mount.fs,
+                        fs: fs_mount.fs.clone(),
                     });
                 }
             }
 
             if let Some(path) = fs_mount.mount_path {
                 plan.push(Call::Mkdir(path.clone()));
-                plan.push(Call::Mount {
-                    device: device_path,
-                    path,
-                });
+                plan.push(Call::Mount { device: device_path.clone(), path: path.clone(),});
+                plan.push(Call::Fstab { device: device_path, path, fs: fs_mount.fs, });
             }
         }
     }

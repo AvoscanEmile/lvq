@@ -12,6 +12,7 @@ pub fn plan(action: Action) -> Result<Draft, String> {
                 draft_type: "provision".to_string(), 
                 draft: calls,
                 status: DraftStatus::Pending,
+                warnings: Vec::new(), 
             })
         }
     }

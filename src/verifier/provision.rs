@@ -44,6 +44,36 @@ fn probe_mount_exists(target_path: &Path) -> bool {
     }
 }
 
+fn probe_swap_active(path: &Path) -> bool {
+    if let Ok(swaps) = std::fs::read_to_string("/proc/swaps") {
+        let path_str = path.to_str().unwrap_or_default();
+        swaps.lines().any(|line| line.contains(path_str))
+    } else {
+        false
+    }
+}
+
+fn probe_fstab_exists(device: &Path, mount_path: &Path) -> bool {
+    let fstab = std::fs::read_to_string("/etc/fstab").unwrap_or_default();
+    
+    let mnt_str = mount_path.to_str().unwrap_or_default();
+    if !mnt_str.is_empty() && mnt_str != "none" {
+        if fstab.lines().any(|l| !l.starts_with('#') && l.contains(mnt_str)) {
+            return true;
+        }
+    }
+
+    if let Ok(output) = Command::new("blkid").args(["-s", "UUID", "-o", "value", device.to_str().unwrap_or_default()]).output() {
+        let uuid = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !uuid.is_empty() && fstab.lines().any(|l| !l.starts_with('#') && l.contains(&uuid)) {
+            return true;
+        }
+    }
+
+    let dev_str = device.to_str().unwrap_or_default();
+    fstab.lines().any(|l| !l.starts_with('#') && l.contains(dev_str))
+}
+
 fn probe_block_device_size(path: &Path) -> Result<u64, String> {
     let output = Command::new("lsblk")
         .args(["-b", "-n", "-o", "SIZE", path.to_str().unwrap_or_default()])
@@ -58,23 +88,33 @@ fn probe_block_device_size(path: &Path) -> Result<u64, String> {
     size_str.parse::<u64>().map_err(|_| format!("Failed to parse size: {}", size_str))
 }
 
+fn probe_is_full_disk(path: &Path) -> bool {
+    Command::new("lsblk")
+        .args(["-n", "-d", "-o", "TYPE", path.to_str().unwrap_or_default()])
+        .output()
+        .map(|o| {
+            let out = String::from_utf8_lossy(&o.stdout);
+            let dev_type = out.trim();
+            !dev_type.is_empty() && dev_type != "part"
+        })
+        .unwrap_or(false)
+}
+
 fn verify_done(draft: &mut Draft) -> Result<(), String> {
     let mut matched_calls = 0;
-    let total_calls = draft.draft.len();
+    let mut total_calls = draft.draft.len();
 
     for call in &draft.draft {
-        let matched = match call {
-            Call::PvCreate(path) => probe_pv_exists(path),
-            Call::VgCreate { name, .. } => probe_vg_exists(name),
-            Call::LvCreate { vg, name, .. } => probe_lv_exists(vg, name),
-            Call::Mkfs { device, .. } | Call::MkSwap(device) => probe_fs_exists(device),
-            Call::Mkdir(path) => path.exists(),
-            Call::Mount { path, .. } => probe_mount_exists(path),
+        match call {
+            Call::PvCreate(path) => if probe_pv_exists(path) { matched_calls += 1; },
+            Call::VgCreate { name, .. } => if probe_vg_exists(name) { matched_calls += 1; },
+            Call::LvCreate { vg, name, .. } => if probe_lv_exists(vg, name) { matched_calls += 1; },
+            Call::Mount { path, .. } => if probe_mount_exists(path) { matched_calls += 1; },
+            Call::Fstab { device, path, .. } => if probe_fstab_exists(device, path) { matched_calls += 1; },
+            Call::MkSwap(device) => if probe_swap_active(device) { matched_calls += 1; }
+            Call::Mkfs { device, .. } => if probe_fs_exists(device) { total_calls -= 1; }
+            Call::Mkdir(path) => if path.exists() { total_calls -= 1; }
         };
-
-        if matched {
-            matched_calls += 1;
-        }
     }
 
     if matched_calls == total_calls {
@@ -92,6 +132,23 @@ fn verify_done(draft: &mut Draft) -> Result<(), String> {
 fn verify_possible(draft: &mut Draft) -> Result<(), String> {
     if draft.status != DraftStatus::Clean {
         return Err("Cannot run capability check on a non-clean draft.".to_string());
+    }
+
+    for call in &draft.draft {
+        if let Call::PvCreate(path) = call {
+            if probe_is_full_disk(path) {
+                draft.warnings.push(format!("Targeting full disk {:?} (not a partition). This could cause problems in the future. It is recommended to partition first, then call the program on the target partition instead.", path));
+            }
+
+            if probe_fs_exists(path) {
+                if probe_fstab_exists(path, Path::new("")) {
+                    draft.status = DraftStatus::Dirty;
+                    return Err(format!("CRITICAL: Device {:?} has a filesystem signature that is actively referenced in /etc/fstab! Wiping it would break system boot.", path));
+                } else {
+                    draft.warnings.push(format!("Device {:?} contains an existing signature. PV creation will wipe this signature automatically. Make sure no crucial data will be lost", path));
+                }
+            }
+        }
     }
 
     let mut total_usable_extents: u128 = 0;

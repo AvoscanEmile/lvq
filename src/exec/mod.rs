@@ -10,6 +10,13 @@ pub fn confirm_execution(exec: &mut Exec) -> Result<(), String> {
         return Ok(());
     }
 
+    if !exec.warnings.is_empty() {
+        println!("--- WARNINGS ---");
+        for warning in &exec.warnings {
+            println!("{}", warning);
+        }
+    }
+
     println!("\n--- PENDING SYSTEM CHANGES ---");
     for (i, cmd) in exec.list.iter().enumerate() {
         println!("{:2}. {}", i + 1, cmd);

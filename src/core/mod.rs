@@ -212,6 +212,7 @@ pub enum Call {
     MkSwap(PathBuf),
     Mkdir(PathBuf),
     Mount { device: PathBuf, path: PathBuf },
+    Fstab { device: PathBuf, path: PathBuf, fs: Filesystem},
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -230,10 +231,12 @@ pub struct Draft {
     pub draft_type: String,
     pub draft: Vec<Call>,
     pub status: DraftStatus, 
+    pub warnings: Vec<String>,
 }
 
 pub struct Exec {
     pub list: Vec<String>,
     pub auto_confirm: bool,
     pub is_allowed: bool, 
+    pub warnings: Vec<String>, 
 }
