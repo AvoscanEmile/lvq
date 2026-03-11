@@ -1,10 +1,8 @@
-use std::env;
 use crate::core::Action;
 mod provision;
 use provision::parse_provision;
 
-pub fn parse() -> Result<Action, String> {
-    let args: Vec<String> = env::args().collect();
+pub fn parse(args: Vec<String>) -> Result<Action, String> {
     let mut subcommand: &str = "";
     let mut auto_confirm: bool = false; 
 
@@ -33,3 +31,5 @@ pub fn parse() -> Result<Action, String> {
     Ok(Action { command, auto_confirm })
 }
 
+#[cfg(test)]
+mod tests;

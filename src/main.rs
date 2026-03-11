@@ -15,7 +15,7 @@ fn main() {
     }
 
     // 2. Parse CLI arguments into an Action
-    let action = match parser::parse() {
+    let action = match parser::parse(std::env::args().collect()) {
         Ok(a) => a,
         Err(e) => {
             eprintln!("Parse Error: {e}");

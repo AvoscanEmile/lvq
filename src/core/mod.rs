@@ -62,7 +62,7 @@ impl fmt::Display for SizeUnit {
             SizeUnit::Petabytes(n) => write!(f, "{}P", n),
             SizeUnit::Exabytes(n) => write!(f, "{}E", n),
             SizeUnit::Sectors(n) => write!(f, "{}s", n),
-            SizeUnit::Extents(n) => write!(f, "{}", n), // LVM usually treats raw numbers as extents
+            SizeUnit::Extents(n) => write!(f, "{}", n), 
             SizeUnit::Percentage(p, target) => {
                 let suffix = match target {
                     PercentTarget::Free => "FREE",
@@ -212,14 +212,12 @@ impl FromStr for LvRequest {
             return Err(format!("Invalid format '{}'. Max: name:size:fs:mount", s));
         }
 
-        // Validate Name
+        
         let name = parts[0].to_string();
         if name.is_empty() || name.starts_with('-') || !name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.') {
             return Err(format!("Invalid LV name: '{}'", name));
         }
 
-        // Validate Structure (Mount without FS)
-        // Check if index 3 (mount) exists and is not empty while index 2 (fs) is empty
         let fs_part = parts.get(2).unwrap_or(&"");
         let mount_part = parts.get(3).unwrap_or(&"");
 
@@ -227,10 +225,8 @@ impl FromStr for LvRequest {
             return Err(format!("Provided a mountpath '{}' but no filesystem.", mount_part));
         }
 
-        // Parse Size
         let size = SizeUnit::from_str(parts[1])?;
 
-        // Parse FS and Mount
         let fs = if !fs_part.is_empty() {
             let fs_type = Filesystem::from_str(fs_part)?;
             let mount_path = if !mount_part.is_empty() {
@@ -249,10 +245,8 @@ impl FromStr for LvRequest {
 
 impl fmt::Display for LvRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // name and size are mandatory
         write!(f, "{}:{}", self.name, self.size)?;
 
-        // fs and mount are optional
         if let Some(fs_mount) = &self.fs {
             write!(f, ":{}", fs_mount.fs)?;
             if let Some(path) = &fs_mount.mount_path {
@@ -263,6 +257,7 @@ impl fmt::Display for LvRequest {
     }
 }
 
+#[derive(Debug)]
 pub enum Command {
     Provision {
         pvs: Vec<PathBuf>,
@@ -272,6 +267,7 @@ pub enum Command {
     }
 }
 
+#[derive(Debug)]
 pub struct Action {
     pub command: Command,
     pub auto_confirm: bool,
