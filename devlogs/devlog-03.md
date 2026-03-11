@@ -10,29 +10,29 @@
 
 The primary objective of this development cycle was to architect a robust, zero-dependency command-line interface (CLI) for `lvquick` that maps raw user input directly to validated domain models. The goal was to replace generic parsing frameworks with a custom, two-pass tokenizer capable of handling LVM-specific complexities—such as multi-path device strings and percentage-based sizing—while enforcing strict data invariants at the application boundary.
 
-### Implementation
+## Implementation
 
-#### Hardening the Core Domain Model (`skel.rs`)
+### Hardening the Core Domain Model (`skel.rs`)
 
 The existing data structures were refactored to prioritize type safety over primitive types. A `ValidPercentage` tuple struct was introduced to encapsulate the invariant that a percentage must reside within the $1..100$ range. The `SizeUnit` enum was expanded to support LVM-native targets (`%FREE`, `%VG`, `%PVS`), and the `LvRequest` struct was updated to include a nested `fsMount` struct, facilitating a cleaner mapping for logical volume creation and subsequent mounting logic.
 
-#### Distillation via `FromStr` Traits
+### Distillation via `FromStr` Traits
 
 To decouple string parsing from CLI logic, comprehensive `FromStr` implementations were written for `SizeUnit`, `Filesystem`, and `LvRequest`. This allowed the parser to delegate the complexity of string splitting and unit conversion to the types themselves. For instance, the `LvRequest` parser was designed to handle complex colon-delimited strings (e.g., `data:10G:ext4:/mnt/data`), ensuring that each segment is distilled into its corresponding domain variant or rejected early with a descriptive error.
 
-#### Orchestrator Pass: Global State and Subcommand Discovery
+### Orchestrator Pass: Global State and Subcommand Discovery
 
 The `parse_cli` function was implemented as a high-level orchestrator. A linear scan of `env::args()` was developed to identify global toggles (such as `-y` or `--auto-confirm`) and the primary "Naked Token" representing the subcommand. By utilizing a lookbehind guard (`previous.starts_with('-')`), the orchestrator was made capable of distinguishing between a subcommand verb and a value associated with a flag, allowing for flexible command ordering.
 
-#### Worker Pass: Command-Specific Tokenization
+### Worker Pass: Command-Specific Tokenization
 
 A delegated worker function, `parse_provision`, was created to handle the specific requirements of the provisioning command. This function implements a stateful `while` loop that consumes tokens based on the identified flags (`--pv`, `--vg`, `--lv`). This separation ensures that the worker only concerns itself with domain-specific data, while skipping global modifiers that were already processed by the orchestrator pass.
 
-#### Input Sanitization and Boundary Guards
+### Input Sanitization and Boundary Guards
 
 Specific guards were integrated into the tokenizer to prevent common CLI failures. Multi-path inputs for physical volumes were sanitized using `.filter(|s| !s.is_empty())` to prevent the creation of empty `PathBuf` objects. Additionally, lookahead guards were implemented to ensure that flags do not "swallow" other flags if a value is missing, maintaining the integrity of the token stream.
 
-### Challenges & Resolutions
+## Challenges & Resolutions
 
 **Dynamic Subcommand Overwriting**
 * **Challenge**: Because the orchestrator loop continued scanning after finding the subcommand to look for global flags, subsequent non-flag arguments (typos) would overwrite the `subcommand` variable.
@@ -53,9 +53,7 @@ Specific guards were integrated into the tokenizer to prevent common CLI failure
 * **Challenge**: The use of "let-chains" (e.g., `if let Some(x) = y && condition`) was identified as an unstable feature that would prevent compilation on standard Rust toolchains.
 * **Resolution**: Nested `if` blocks were used to replicate the logic, ensuring the parser remains compatible with the stable compiler while maintaining the same level of safety.
 
-
-
-### Outcomes
+## Outcomes
 
 The resulting architecture is a deterministic, zero-dependency parser that guarantees that any `Action` passed to the execution engine is logically and physically valid. By moving validation to the `FromStr` implementations of the core types, the CLI logic remains concise and easily extensible for future subcommands.
 
