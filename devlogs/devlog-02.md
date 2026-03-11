@@ -10,11 +10,11 @@
 
 To establish the core architectural skeleton for a high-integrity LVM orchestration tool. The primary goal was to define a domain-specific language (DSL) in Rust that translates fuzzy human storage requirements into deterministic, machine-executable operations. This phase focused on creating a "Logic-Tight" anatomy that prevents common storage pitfalls—such as rounding errors and invalid state transitions—at the type level.
 
-### Implementation
+## Implementation
 
 The design was centered around a layered approach where user intent is refined into discrete, verifiable hardware calls.
 
-#### Scalable Unit Representation
+### Scalable Unit Representation
 
 A comprehensive `SizeUnit` enum was implemented to handle the vast range of storage capacities.
 
@@ -23,18 +23,18 @@ By utilizing `u64` for variants ranging from `Bytes` to `Exabytes`, the system w
 
 $$Extents = \lceil \frac{RequestedBytes}{PEBytes} \rceil$$
 
-#### Structuring Intent vs. Execution
+### Structuring Intent vs. Execution
 
 The relationship between user requests and system actions was formalized using `LvRequest` and `Call`.
 
 * **`LvRequest`**: This struct was designed to capture the desired state of a Logical Volume, utilizing `Option<Filesystem>` and `Option<PathBuf>` to denote that filesystems and mount points are optional attributes of a volume rather than mandatory ones.
 * **`Call`**: A discrete, atomic enum was created to represent the final "To-Do List" for the OS. By separating operations like `WipeSignatures`, `PvCreate`, and `Mkfs`, a clear path for granular execution and error reporting was established.
 
-#### Atomic Action Modeling
+### Atomic Action Modeling
 
 A top-level `Action` struct was defined to encapsulate the `Command::Provision` intent. This structure ensures that the entire provisioning lifecycle—from identifying physical volumes (`pvs`) to setting the Physical Extent size (`pe_size`) and defining multiple logical volumes—is treated as a single, coherent unit of work.
 
-### Project Workspace & Modularity
+## Project Workspace & Modularity
 
 The directory structure was initialized to enforce a clear boundary between the application's entry point and its core domain logic. A namespaced approach was chosen to ensure the "Skeleton" remains isolated from the eventual CLI and Shell-execution layers.
 
@@ -54,7 +54,7 @@ lvq/
 
 ```
 
-### Challenges & Resolutions
+## Challenges & Resolutions
 
 **Challenge**: Ambiguity in how LVM handles rounding when users provide human-readable strings (e.g., "10G").
 * **Resolution**: The `Extents(u64)` variant was integrated into the core `SizeUnit` enum. This ensures that the math is performed within the tool's logic rather than being delegated to the `lvcreate` binary, providing the author with total control over disk geometry.
@@ -69,11 +69,11 @@ lvq/
 
 
 
-### Testing & Validation
+## Testing & Validation
 
 The architecture was validated through a "Type-Safety Audit." It was observed that by using Rust’s `enum` structures, invalid commands (such as attempting to format a volume with a non-existent filesystem) became unrepresentable in the code. Logical verification was performed to ensure that the `Call` enum could be mapped to a hypothetical "Rollback" function, confirming that the data-driven design supports transactional atomicity.
 
-### Outcomes
+## Outcomes
 
 * A complete, type-safe anatomy for LVM orchestration was produced.
 * A deterministic path from human input to physical extents was established.
