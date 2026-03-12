@@ -192,7 +192,7 @@ pub struct FsMount {
     pub mount_path: Option<PathBuf>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LvRequest {
     pub name: String,
     pub size: SizeUnit,

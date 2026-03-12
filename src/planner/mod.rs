@@ -17,3 +17,6 @@ pub fn plan(action: Action) -> Result<Draft, String> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
