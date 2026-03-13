@@ -14,8 +14,7 @@ libfuzzer-sys = "0.4"
 path = ".."
 
 [[bin]]
-name = "fuzz_target_1"
-path = "fuzz_targets/fuzz_target_1.rs"
+name = "full_pipeline"
+path = "fuzz_targets/full_pipeline.rs"
 test = false
 doc = false
-bench = false
