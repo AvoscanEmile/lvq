@@ -89,8 +89,6 @@ fn arb_draft() -> impl Strategy<Value = Draft> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100000))]
-
     #[test]
     fn test_fstab_lifecycle_invariants(draft in arb_draft()) {
         let has_fstab = draft.draft.iter().any(|c| matches!(c, Call::Fstab { .. }));

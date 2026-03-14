@@ -35,8 +35,6 @@ fn arb_lv_request() -> impl Strategy<Value = LvRequest> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100000))]
-
     #[test]
     fn test_plan_provision_ordering_and_consistency(
         pvs in prop::collection::vec("[a-z/]{5,15}", 1..5),

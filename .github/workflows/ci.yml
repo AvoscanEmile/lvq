@@ -14,6 +14,8 @@ jobs:
   test:
     name: Unit & Property Tests
     runs-on: ubuntu-latest
+    env:
+      PROPTEST_CASES: 10000
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust

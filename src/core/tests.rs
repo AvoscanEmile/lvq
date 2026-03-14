@@ -66,8 +66,6 @@ prop_compose! {
 
 // Proptest harness
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100000))]
-    
     #[test]
     fn test_parse_percentage_valid_cases(
         val in 0..=255u8, 

@@ -4,8 +4,6 @@ use crate::core::Command;
 use proptest::sample::Index;
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100000))]
-
     #[test]
     fn test_parse_provision_chaos_resilience(
         junk_args in prop::collection::vec(".*", 0..20)

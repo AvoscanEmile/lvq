@@ -1,11 +1,6 @@
-pub mod core;
-pub mod parser;
-pub mod planner;
-pub mod verifier;
-pub mod exec;
-
 use std::process::{self, Command};
-use crate::core::DraftStatus;
+use lvq::core::DraftStatus;
+use lvq::{parser, planner, verifier, exec};
 
 fn main() {
     // 1. Identity Check (Must be root/sudo to interact with LVM and /var/log/lvq)

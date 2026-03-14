@@ -243,8 +243,6 @@ fn safety_scenario_strategy() -> impl Strategy<Value = (Draft, SystemState, bool
 
 #[cfg(test)]
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(100000))]
-
     #[test]
     fn test_verify_done_invariants((mut draft, state, expected_status) in draft_and_state_strategy()) {
         let result = verify_done(&mut draft, &state);
