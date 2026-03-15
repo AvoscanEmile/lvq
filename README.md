@@ -35,8 +35,7 @@ cargo build --release
 sudo cp target/release/lvq /usr/local/bin/
 
 ```
-
-### The "All-in-One" Provision
+### Simple Provisioning
 
 Provision a raw disk into a Volume Group, carve out a Logical Volume, format it with XFS, and mount it persistently in one atomic transaction:
 
@@ -45,10 +44,31 @@ sudo lvq provision \
   --pv /dev/sdb \
   --vg data_vg \
   --lv logs:10G:xfs:/var/log/app
+``` 
 
+### Advanced Provisioning
+
+`lvq` supports multi-disk Physical Volume (PV) pools and multiple Logical Volume (LV) declarations in a single transaction. You can pass multiple `--pv` flags or colon-separated paths.
+
+```bash
+sudo lvq provision \
+  --pv /dev/sdb1:/dev/sdc1 \
+  --pv /dev/sdd1 \
+  --vg enterprise_vg \
+  --lv logs:10G:xfs:/var/log/app \
+  --lv data:500G:ext4:/mnt/data \
+  --lv swap:8G:swap
 ```
 
-**The Safety Gate:** Unless invoked with `-y`, `lvq` displays the full plan and system warnings, requiring an explicit `Y` to proceed. It checks that `/dev/sdb` has no existing filesystems or `fstab` entries before it even asks for permission.
+**What `lvq` does under the hood:**
+
+1. **Probes** all targeted devices (`sdb1`, `sdc1`, `sdd1`) to build an in-memory `SystemState`.
+2. **Verifies** all devices are free of existing filesystems and `fstab` collisions.
+3. **Calculates** the aggregate capacity of the PV pool and verifies it can house the 518GB of requested LVs.
+4. **Generates** a sequential plan: `pvcreate` (x3) → `vgcreate` → `lvcreate` (x3) → `mkfs/mkswap` (x3) → `mkdir` → `mount` → `fstab`.
+5. **Prompts** for confirmation, then **Executes** and logs to `/var/log/lvq`.
+
+**The Safety Gate:** Unless invoked with `-y`, `lvq` displays the full plan and system warnings, requiring an explicit `Y` to proceed.
 
 ## Hardening & Verification
 
