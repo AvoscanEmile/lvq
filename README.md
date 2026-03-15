@@ -91,10 +91,10 @@ Built with a "high-assurance" mindset, `lvq` is subjected to multiple layers of 
 
 ## Documentation Deep Dives
 
-* **[Architecture & Design](https://www.google.com/search?q=docs/architecture.md):** The internal State-Convergence engine logic.
-* **[Testing & Verification](https://www.google.com/search?q=docs/testing.md):** Deep dive into formal proofs and fuzzing.
-* **[Full Roadmap](https://www.google.com/search?q=docs/roadmap.md):** Our journey from v0.1 to v1.0.
-* **[Development Logs](https://www.google.com/search?q=devlogs/):** The history of every major architectural decision.
+* **[Architecture & Design](docs/architecture.md):** The internal State-Convergence engine logic.
+* **[Testing & Verification](docs/testing.md):** Deep dive into formal proofs and fuzzing.
+* **[Full Roadmap](docs/roadmap.md):** Our journey from v0.1 to v1.0.
+* **[Development Logs](devlogs/):** The history of every major architectural decision.
 
 ### Disclaimer
 
