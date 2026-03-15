@@ -17,7 +17,7 @@ Manual LVM management is a **"Russian Roulette"** of shell scripts, string parsi
 
 LVM2 is a powerful imperative system: commands execute immediately, and multi-step workflows (like resizing, migrating data, or updating fstab) are prone to human fatigue and extent miscalculations. `lvq` addresses these risks by:
 
-1. **Ingesting** live state via `lvm fullreport --reportformat json`. We explicitly avoid fragile C bindings, relying on LVM2's stable CLI-to-JSON interface.
+1. **Ingesting** live state via `probes` defined in the `verifier` module.
 2. **Generating** an immutable action plan that ensures invariants (e.g., `LV_new_size ≥ FS_size`).
 3. **Verifying** safety before execution, detecting "blunder risks" such as busy mounts or inconsistent fstab entries.
 4. **Journaling** every step to `/var/log/lvq` for forensic auditing and deterministic recovery.
