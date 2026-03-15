@@ -60,15 +60,129 @@ sudo lvq provision \
   --lv swap:8G:swap
 ```
 
+### Advanced Example
+
+`lvq` supports, in theory, infinite scalling for such scenarios, perfectly allowing you to write a massive `provision` like: 
+
+```bash
+sudo lvq provision \
+  --pv /dev/loop0:/dev/loop1 \
+  --pv /dev/loop2 \
+  --pv /dev/loop3:/dev/loop4 \
+  --vg tank_vg \
+  --lv web_root:1G:xfs:/var/www/html \
+  --lv db_data:2G:ext4:/var/lib/mysql \
+  --lv app_logs:500M:xfs:/var/log/app \
+  --lv redis_cache:500M:ext4:/var/lib/redis \
+  --lv user_uploads:1G:btrfs:/srv/uploads \
+  --lv backup_staged:1G:xfs:/mnt/backups \
+  --lv scratch_pad:200M:vfat:/mnt/scratch \
+  --lv media_assets:1G:ext4:/var/www/media \
+  --lv docker_volumes:1.5G:xfs:/var/lib/docker \
+  --lv swap_space:1G:swap
+```
+This generates a massive 77 step plan, fully showcasing the power of `lvq`. It allows the user to review every single step before execution: 
+
+```bash
+--- WARNINGS ---
+Targeting full disk "/dev/loop0" (not a partition)...
+Targeting full disk "/dev/loop1" (not a partition)...
+Targeting full disk "/dev/loop2" (not a partition)...
+Targeting full disk "/dev/loop3" (not a partition)...
+Targeting full disk "/dev/loop4" (not a partition)...
+
+--- PENDING SYSTEM CHANGES ---
+ 1. cp -p /etc/fstab /etc/fstab.bak
+ 2. pvcreate -y "/dev/loop0"
+ 3. pvcreate -y "/dev/loop1"
+ 4. pvcreate -y "/dev/loop2"
+ 5. pvcreate -y "/dev/loop3"
+ 6. pvcreate -y "/dev/loop4"
+ 7. vgcreate -s 4194304B tank_vg "/dev/loop0" "/dev/loop1" "/dev/loop2" "/dev/loop3" "/dev/loop4"
+ 8. lvcreate -y -n web_root -L 1073741824B tank_vg
+ 9. mkfs -t xfs "/dev/tank_vg/web_root"
+10. mkdir -p "/var/www/html"
+11. mount "/dev/tank_vg/web_root" "/var/www/html"
+12. cp -p /etc/fstab /etc/fstab.xfs.tmp
+13. ID=$(blkid -s UUID -o value /dev/tank_vg/web_root); if [ -z "$ID" ]; then ID=/dev/tank_vg/web_root; else ID="UUID=$ID"; fi; echo "$ID /var/www/html xfs defaults 0 2" >> /etc/fstab.xfs.tmp
+14. mv /etc/fstab.xfs.tmp /etc/fstab
+15. lvcreate -y -n db_data -L 2147483648B tank_vg
+16. mkfs -t ext4 "/dev/tank_vg/db_data"
+17. mkdir -p "/var/lib/mysql"
+18. mount "/dev/tank_vg/db_data" "/var/lib/mysql"
+19. cp -p /etc/fstab /etc/fstab.ext4.tmp
+20. ID=$(blkid -s UUID -o value /dev/tank_vg/db_data); if [ -z "$ID" ]; then ID=/dev/tank_vg/db_data; else ID="UUID=$ID"; fi; echo "$ID /var/lib/mysql ext4 defaults 0 2" >> /etc/fstab.ext4.tmp
+21. mv /etc/fstab.ext4.tmp /etc/fstab
+22. lvcreate -y -n app_logs -L 524288000B tank_vg
+23. mkfs -t xfs "/dev/tank_vg/app_logs"
+24. mkdir -p "/var/log/app"
+25. mount "/dev/tank_vg/app_logs" "/var/log/app"
+26. cp -p /etc/fstab /etc/fstab.xfs.tmp
+27. ID=$(blkid -s UUID -o value /dev/tank_vg/app_logs); if [ -z "$ID" ]; then ID=/dev/tank_vg/app_logs; else ID="UUID=$ID"; fi; echo "$ID /var/log/app xfs defaults 0 2" >> /etc/fstab.xfs.tmp
+28. mv /etc/fstab.xfs.tmp /etc/fstab
+29. lvcreate -y -n redis_cache -L 524288000B tank_vg
+30. mkfs -t ext4 "/dev/tank_vg/redis_cache"
+31. mkdir -p "/var/lib/redis"
+32. mount "/dev/tank_vg/redis_cache" "/var/lib/redis"
+33. cp -p /etc/fstab /etc/fstab.ext4.tmp
+34. ID=$(blkid -s UUID -o value /dev/tank_vg/redis_cache); if [ -z "$ID" ]; then ID=/dev/tank_vg/redis_cache; else ID="UUID=$ID"; fi; echo "$ID /var/lib/redis ext4 defaults 0 2" >> /etc/fstab.ext4.tmp
+35. mv /etc/fstab.ext4.tmp /etc/fstab
+36. lvcreate -y -n user_uploads -L 1073741824B tank_vg
+37. mkfs -t btrfs "/dev/tank_vg/user_uploads"
+38. mkdir -p "/srv/uploads"
+39. mount "/dev/tank_vg/user_uploads" "/srv/uploads"
+40. cp -p /etc/fstab /etc/fstab.btrfs.tmp
+41. ID=$(blkid -s UUID -o value /dev/tank_vg/user_uploads); if [ -z "$ID" ]; then ID=/dev/tank_vg/user_uploads; else ID="UUID=$ID"; fi; echo "$ID /srv/uploads btrfs defaults 0 2" >> /etc/fstab.btrfs.tmp
+42. mv /etc/fstab.btrfs.tmp /etc/fstab
+43. lvcreate -y -n backup_staged -L 1073741824B tank_vg
+44. mkfs -t xfs "/dev/tank_vg/backup_staged"
+45. mkdir -p "/mnt/backups"
+46. mount "/dev/tank_vg/backup_staged" "/mnt/backups"
+47. cp -p /etc/fstab /etc/fstab.xfs.tmp
+48. ID=$(blkid -s UUID -o value /dev/tank_vg/backup_staged); if [ -z "$ID" ]; then ID=/dev/tank_vg/backup_staged; else ID="UUID=$ID"; fi; echo "$ID /mnt/backups xfs defaults 0 2" >> /etc/fstab.xfs.tmp
+49. mv /etc/fstab.xfs.tmp /etc/fstab
+50. lvcreate -y -n scratch_pad -L 209715200B tank_vg
+51. mkfs -t vfat "/dev/tank_vg/scratch_pad"
+52. mkdir -p "/mnt/scratch"
+53. mount "/dev/tank_vg/scratch_pad" "/mnt/scratch"
+54. cp -p /etc/fstab /etc/fstab.vfat.tmp
+55. ID=$(blkid -s UUID -o value /dev/tank_vg/scratch_pad); if [ -z "$ID" ]; then ID=/dev/tank_vg/scratch_pad; else ID="UUID=$ID"; fi; echo "$ID /mnt/scratch vfat defaults 0 2" >> /etc/fstab.vfat.tmp
+56. mv /etc/fstab.vfat.tmp /etc/fstab
+57. lvcreate -y -n media_assets -L 1073741824B tank_vg
+58. mkfs -t ext4 "/dev/tank_vg/media_assets"
+59. mkdir -p "/var/www/media"
+60. mount "/dev/tank_vg/media_assets" "/var/www/media"
+61. cp -p /etc/fstab /etc/fstab.ext4.tmp
+62. ID=$(blkid -s UUID -o value /dev/tank_vg/media_assets); if [ -z "$ID" ]; then ID=/dev/tank_vg/media_assets; else ID="UUID=$ID"; fi; echo "$ID /var/www/media ext4 defaults 0 2" >> /etc/fstab.ext4.tmp
+63. mv /etc/fstab.ext4.tmp /etc/fstab
+64. lvcreate -y -n docker_volumes -L 1073741824B tank_vg
+65. mkfs -t xfs "/dev/tank_vg/docker_volumes"
+66. mkdir -p "/var/lib/docker"
+67. mount "/dev/tank_vg/docker_volumes" "/var/lib/docker"
+68. cp -p /etc/fstab /etc/fstab.xfs.tmp
+69. ID=$(blkid -s UUID -o value /dev/tank_vg/docker_volumes); if [ -z "$ID" ]; then ID=/dev/tank_vg/docker_volumes; else ID="UUID=$ID"; fi; echo "$ID /var/lib/docker xfs defaults 0 2" >> /etc/fstab.xfs.tmp
+70. mv /etc/fstab.xfs.tmp /etc/fstab
+71. lvcreate -y -n swap_space -L 1073741824B tank_vg
+72. mkswap /dev/tank_vg/swap_space
+73. swapon /dev/tank_vg/swap_space
+74. cp -p /etc/fstab /etc/fstab.swap.tmp
+75. ID=$(blkid -s UUID -o value /dev/tank_vg/swap_space); if [ -z "$ID" ]; then ID=/dev/tank_vg/swap_space; else ID="UUID=$ID"; fi; echo "$ID none swap sw 0 0" >> /etc/fstab.swap.tmp
+76. mv /etc/fstab.swap.tmp /etc/fstab
+77. systemctl daemon-reload
+------------------------------
+
+Execute these commands? [Y/n]: 
+```
+
 **What `lvq` does under the hood:**
 
-1. **Probes** all targeted devices (`sdb1`, `sdc1`, `sdd1`) to build an in-memory `SystemState`.
+1. **Probes** all targeted devices to build an in-memory `SystemState`.
 2. **Verifies** all devices are free of existing filesystems and `fstab` collisions.
 3. **Calculates** the aggregate capacity of the PV pool and verifies it can house the 518GB of requested LVs.
-4. **Generates** a sequential plan: `pvcreate` (x3) → `vgcreate` → `lvcreate` (x3) → `mkfs/mkswap` (x3) → `mkdir` → `mount` → `fstab`.
+4. **Generates** a sequential plan: `pvcreate` → `vgcreate` → `lvcreate` → `mkfs/mkswap` → `mkdir` → `mount` → `fstab`.
 5. **Prompts** for confirmation, then **Executes** and logs to `/var/log/lvq`.
 
-**The Safety Gate:** Unless invoked with `-y`, `lvq` displays the full plan and system warnings, requiring an explicit `Y` to proceed.
+**The Safety Gate:** Unless invoked with `-y`, which is only recommended for the brave, `lvq` displays the full plan and system warnings, requiring an explicit `Y` to proceed.
 
 ## Hardening & Verification
 
