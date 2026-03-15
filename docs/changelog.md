@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `LICENSE` for the project's licensing terms.
 * The `docs/` directory, including `architecture.md`, `changelog.md` (this file), and `roadmap.md`.
 * The `devlogs/` directory, containing 14 development log entries (`devlog-01.md` through `devlog-14.md`).
-* Added the fuzz folder.
+* The `fuzz` folder.
 * `src/main.rs` and `src/lib.rs` as the primary application and library entry points.
 * `src/core/` module, including `mod.rs`, `tests.rs`, and `kani_proofs.rs`.
 * `src/exec/` module, including `mod.rs`, `provision.rs`, and `tests.rs`.
