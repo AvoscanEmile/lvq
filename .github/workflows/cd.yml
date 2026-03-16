@@ -39,8 +39,6 @@ jobs:
             exit 1
           fi
           echo "Versions match. Proceeding with CD..."
-
-jobs:
   # 1. Standard Unit & Property Tests
   test:
     name: Unit & Property Tests
