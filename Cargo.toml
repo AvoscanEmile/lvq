@@ -1,6 +1,6 @@
 [package]
 name = "lvq"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Emile Avoscan"]
 edition = "2024"
 description = "A high-performance, transactional LVM orchestration utility designed for deterministic storage provisioning."

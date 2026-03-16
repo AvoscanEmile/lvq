@@ -10,6 +10,37 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  validate-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract Tag Version
+        id: get_tag
+        # Extracts '0.1.1' from 'refs/tags/v0.1.1'
+        run: echo "TAG_VER=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Extract Cargo.toml Version
+        id: get_cargo
+        # Uses grep/sed to find the first version line in Cargo.toml
+        run: |
+          CARGO_VER=$(grep -m 1 '^version =' Cargo.toml | cut -d '"' -f 2)
+          echo "CARGO_VER=$CARGO_VER" >> $GITHUB_OUTPUT
+
+      - name: Guard: Compare Versions
+        run: |
+          echo "Checking version consistency..."
+          echo "Tag Version: ${{ steps.get_tag.outputs.TAG_VER }}"
+          echo "Cargo.toml Version: ${{ steps.get_cargo.outputs.CARGO_VER }}"
+          
+          if [ "${{ steps.get_tag.outputs.TAG_VER }}" != "${{ steps.get_cargo.outputs.CARGO_VER }}" ]; then
+            echo "::error::Version Mismatch! Tag is ${{ steps.get_tag.outputs.TAG_VER }} but Cargo.toml is ${{ steps.get_cargo.outputs.CARGO_VER }}"
+            exit 1
+          fi
+          echo "Versions match. Proceeding with CD..."
+
+jobs:
   # 1. Standard Unit & Property Tests
   test:
     name: Unit & Property Tests
