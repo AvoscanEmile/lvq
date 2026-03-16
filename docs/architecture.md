@@ -33,9 +33,9 @@ graph TD
     J -->|User Auth/Confirm| K{Allowed?}
     K -->|No| L[Exit 0: Aborted]
     K -->|Yes| M[Execute & Log]
-    M -->|Post-Execution| N[verifier: Pass 1]
-    N -->|Done| O[Exit 0: Success]
-
+    M -->|Post-Execution| N[Verifier]
+    N -->|True| O[Exit 0: Success]
+    N -->|False| P[Exit 1: Failure]
 ```
 
 ### Type Transformations
