@@ -28,7 +28,7 @@ jobs:
           CARGO_VER=$(grep -m 1 '^version =' Cargo.toml | cut -d '"' -f 2)
           echo "CARGO_VER=$CARGO_VER" >> $GITHUB_OUTPUT
 
-      - name: Guard: Compare Versions
+      - name: Compare Versions
         run: |
           echo "Checking version consistency..."
           echo "Tag Version: ${{ steps.get_tag.outputs.TAG_VER }}"
