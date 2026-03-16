@@ -95,25 +95,34 @@ proptest! {
         
         if let Ok(exec) = exec_provision(draft) {
             if has_fstab {
-                // Invariant: Fstab operations MUST begin with a backup
+                // 1. Check start of transaction
                 prop_assert_eq!(
-                    exec.list.first().unwrap(), 
+                    &exec.list.first().unwrap().shell_string, 
                     "cp -p /etc/fstab /etc/fstab.bak",
                     "Fstab calls present but no backup command found at start."
                 );
 
-                // Invariant: Fstab operations MUST conclude with a daemon-reload
+                // 2. Check end of transaction
                 prop_assert_eq!(
-                    exec.list.last().unwrap(), 
+                    &exec.list.last().unwrap().shell_string, 
                     "systemctl daemon-reload",
                     "Fstab calls present but daemon-reload missing from end."
                 );
 
-                // Invariant: Every Fstab entry modification must follow the temp-modify-move pattern
-                for (i, cmd) in exec.list.iter().enumerate() {
-                    if cmd.contains("blkid") && cmd.contains(">> /etc/fstab") {
-                        prop_assert!(exec.list[i-1].contains(".tmp"), "Fstab append missing preceding temp copy.");
-                        prop_assert!(exec.list[i+1].starts_with("mv /etc/fstab."), "Fstab append missing following move command.");
+                // 3. Check the "Triple Pattern" for every fstab modification
+                for (i, inst) in exec.list.iter().enumerate() {
+                    // Identify the 'logic' step (the sh -c block)
+                    if inst.shell_string.contains("blkid") && inst.shell_string.contains(">> /etc/fstab") {
+                        // Invariant: The previous step MUST be creating the temp file
+                        prop_assert!(
+                            exec.list[i-1].shell_string.contains("cp -p /etc/fstab /etc/fstab."), 
+                            "Fstab logic step [{}] missing preceding temp copy.", i
+                        );
+                        // Invariant: The next step MUST be the atomic move
+                        prop_assert!(
+                            exec.list[i+1].shell_string.starts_with("mv /etc/fstab."), 
+                            "Fstab logic step [{}] missing following move command.", i
+                        );
                     }
                 }
             }
@@ -123,20 +132,27 @@ proptest! {
     #[test]
     fn test_swap_atomicity_invariants(draft in arb_draft()) {
         if let Ok(exec) = exec_provision(draft) {
-            for (i, cmd) in exec.list.iter().enumerate() {
-                if cmd.starts_with("mkswap ") {
-                    // Invariant: mkswap must be immediately followed by swapon for the same device
-                    let device = &cmd[7..];
+            for (i, inst) in exec.list.iter().enumerate() {
+                if inst.shell_string.starts_with("mkswap ") {
+                    // 1. Extract the device part (including quotes if present)
+                    let device_part = &inst.shell_string[7..];
                     
-                    // Check if a next command exists first
+                    // 2. Ensure we aren't at the end of the list
                     prop_assert!(
                         i + 1 < exec.list.len(), 
-                        "mkswap was the last command in the list, missing swapon for {}", 
-                        device
+                        "mkswap was the last command, missing swapon for {}", 
+                        device_part
                     );
 
-                    let next_cmd = &exec.list[i + 1];
-                    prop_assert_eq!(next_cmd, &format!("swapon {}", device));
+                    // 3. Compare against the next instruction's shell_string
+                    let next_inst = &exec.list[i + 1];
+                    let expected_swapon = format!("swapon {}", device_part);
+                    
+                    prop_assert_eq!(
+                        &next_inst.shell_string, 
+                        &expected_swapon,
+                        "mkswap must be immediately followed by matching swapon"
+                    );
                 }
             }
         }
@@ -153,7 +169,7 @@ proptest! {
                     let expected_flag = format!("-s {}B", bytes);
                     
                     let found = exec.list.iter().any(|cmd| {
-                        cmd.contains("vgcreate") && cmd.contains(&name) && cmd.contains(&expected_flag)
+                        cmd.shell_string.contains("vgcreate") && cmd.shell_string.contains(&name) && cmd.shell_string.contains(&expected_flag)
                     });
                     
                     prop_assert!(found, "VG creation command lost precision or was malformed for size: {:?}", pe_size);
@@ -202,7 +218,7 @@ fn test_exec_provision_error_on_invalid_size() {
 
 #[test]
 fn test_path_escaping_in_commands() {
-    // Test paths with spaces and special characters to ensure {:?} quoting works
+
     let complex_path = PathBuf::from("/mnt/external drive/backup_01");
     let call = Call::Mkdir(complex_path.clone());
 
@@ -215,11 +231,11 @@ fn test_path_escaping_in_commands() {
     };
 
     let exec = exec_provision(draft).expect("Provisioning should succeed");
-    
-    // The path should be wrapped in quotes in the resulting shell command
     let expected_cmd = format!("mkdir -p {:?}", complex_path);
-    assert!(exec.list.contains(&expected_cmd));
-    assert!(exec.list[0].contains("\"/mnt/external drive/backup_01\""));
+
+    assert!(exec.list.iter().any(|inst| inst.shell_string == expected_cmd));
+    assert!(exec.list[0].shell_string.contains("\"/mnt/external drive/backup_01\""));
+
 }
 
 #[test]
@@ -243,7 +259,10 @@ fn test_empty_draft_yields_empty_exec() {
 fn test_confirm_execution_auto_confirm() {
     // Setup an execution plan with auto_confirm set to true
     let mut exec = Exec {
-        list: vec!["pvcreate /dev/sdb1".to_string()],
+        list: vec![Instruction {
+            shell_string: "pvcreate /dev/sdb1".to_string(),
+            command_call: std::process::Command::new("true"), // dummy command for test state
+        }],
         auto_confirm: true,
         is_allowed: false, // Starts as false
         warnings: vec!["Disk will be wiped".to_string()],
@@ -261,7 +280,10 @@ fn test_confirm_execution_auto_confirm() {
 fn test_apply_execution_security_gate() {
     // Create an execution plan that HAS NOT been confirmed
     let exec = Exec {
-        list: vec!["rm -rf /".to_string()], // A scary command to prove a point
+        list: vec![Instruction { 
+            shell_string: "rm -rf /".to_string(), 
+            command_call: std::process::Command::new("true"), 
+        }], 
         auto_confirm: false,
         is_allowed: false, // The critical flag
         warnings: vec![],

@@ -1,6 +1,5 @@
 use std::fs::OpenOptions;
 use std::io::{self, Write};
-use std::process::Command;
 use crate::core::Exec;
 pub mod provision;
 
@@ -18,8 +17,9 @@ pub fn confirm_execution(exec: &mut Exec) -> Result<(), String> {
     }
 
     println!("\n--- PENDING SYSTEM CHANGES ---");
-    for (i, cmd) in exec.list.iter().enumerate() {
-        println!("{:2}. {}", i + 1, cmd);
+    for (i, instruction) in exec.list.iter().enumerate() {
+        // We print the shell_string to maintain the "What You See Is What You Get" contract
+        println!("{:2}. {}", i + 1, instruction.shell_string);
     }
     println!("------------------------------");
     print!("\nExecute these commands? [Y/n]: ");
@@ -38,7 +38,6 @@ pub fn confirm_execution(exec: &mut Exec) -> Result<(), String> {
 }
 
 pub fn apply_execution(exec: Exec) -> Result<(), String> {
-
     if !exec.is_allowed {
         return Err("Security Error: Attempted to apply an unauthorized execution plan.".into());
     }
@@ -49,30 +48,32 @@ pub fn apply_execution(exec: Exec) -> Result<(), String> {
         .open("/var/log/lvq")
         .map_err(|e| format!("Failed to open log file: {}", e))?;
 
-    writeln!(log, "\nFull execution plan:").ok();
-    for cmd in &exec.list {
-        writeln!(log, "  {cmd}").ok();
+    writeln!(log, "\n--- Start of Transaction ---").ok();
+    writeln!(log, "Full execution plan:").ok();
+    for instruction in &exec.list {
+        writeln!(log, "  {}", instruction.shell_string).ok();
     }
     writeln!(log, "------------------------------").ok();
     writeln!(log, "\nExecution Log:").ok();
 
-    for cmd_str in exec.list {
-        writeln!(log, "INTENT: {}", cmd_str).ok();
+    // Consume the instructions
+    for mut instruction in exec.list {
+        let cmd_display = &instruction.shell_string;
+        writeln!(log, "INTENT: {}", cmd_display).ok();
 
-        let status = Command::new("sh")
-            .arg("-c")
-            .arg(&cmd_str)
-            .status()
-            .map_err(|e| format!("Process error for [{}]: {}", cmd_str, e))?;
+        // Execute the native command object built during the provision phase
+        let status = instruction.command_call.status()
+            .map_err(|e| format!("Process error for [{}]: {}", cmd_display, e))?;
 
         if status.success() {
-            writeln!(log, "SUCCESS: {}", cmd_str).ok();
+            writeln!(log, "SUCCESS: {}", cmd_display).ok();
         } else {
-            writeln!(log, "FAILED: {}", cmd_str).ok();
-            return Err(format!("Command failed with exit code: {:?}", status.code()));
+            writeln!(log, "FAILED: {}", cmd_display).ok();
+            return Err(format!("Command [{}] failed with exit code: {:?}", cmd_display, status.code()));
         }
     }
 
+    writeln!(log, "--- End of Transaction (SUCCESS) ---\n").ok();
     Ok(())
 }
 

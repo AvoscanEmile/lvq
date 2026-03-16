@@ -305,8 +305,14 @@ pub struct Draft {
 }
 
 #[derive(Debug)]
+pub struct Instruction {
+    pub shell_string: String,
+    pub command_call: std::process::Command,
+}
+
+#[derive(Debug)]
 pub struct Exec {
-    pub list: Vec<String>,
+    pub list: Vec<Instruction>,
     pub auto_confirm: bool,
     pub is_allowed: bool, 
     pub warnings: Vec<String>, 

@@ -31,26 +31,46 @@ fn probe_lv_exists(vg: &str, name: &str) -> bool {
 }
 
 fn probe_fs_exists(path: &Path) -> bool {
+    let target_canonical = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    
     Command::new("blkid")
-        .arg(path)
+        .arg(&target_canonical)
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
 }
 
 fn probe_mount_exists(target_path: &Path) -> bool {
+    let target_canonical = std::fs::canonicalize(target_path).unwrap_or_else(|_| target_path.to_path_buf());
+    
     if let Ok(mounts) = std::fs::read_to_string("/proc/mounts") {
-        let path_str = target_path.to_str().unwrap_or_default();
-        mounts.lines().any(|line| line.contains(path_str))
+        mounts.lines().any(|line| {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                // The mount point is the second column in /proc/mounts
+                let mnt_path = Path::new(parts[1]);
+                let mnt_canonical = std::fs::canonicalize(mnt_path).unwrap_or_else(|_| mnt_path.to_path_buf());
+                return target_canonical == mnt_canonical;
+            }
+            false
+        })
     } else {
         false
     }
 }
 
 fn probe_swap_active(path: &Path) -> bool {
+    let target_canonical = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    
     if let Ok(swaps) = std::fs::read_to_string("/proc/swaps") {
-        let path_str = path.to_str().unwrap_or_default();
-        swaps.lines().any(|line| line.contains(path_str))
+        swaps.lines().skip(1).any(|line| {
+            if let Some(device_in_proc) = line.split_whitespace().next() {
+                let proc_path = Path::new(device_in_proc);
+                let proc_canonical = std::fs::canonicalize(proc_path).unwrap_or_else(|_| proc_path.to_path_buf());
+                return target_canonical == proc_canonical;
+            }
+            false
+        })
     } else {
         false
     }
@@ -59,6 +79,7 @@ fn probe_swap_active(path: &Path) -> bool {
 fn probe_fstab_exists(device: &Path, mount_path: &Path) -> bool {
     let fstab = std::fs::read_to_string("/etc/fstab").unwrap_or_default();
     
+    // 1. Mount Path String Match (Usually reliable)
     let mnt_str = mount_path.to_str().unwrap_or_default();
     if !mnt_str.is_empty() && mnt_str != "none" {
         if fstab.lines().any(|l| !l.starts_with('#') && l.contains(mnt_str)) {
@@ -66,20 +87,43 @@ fn probe_fstab_exists(device: &Path, mount_path: &Path) -> bool {
         }
     }
 
-    if let Ok(output) = Command::new("blkid").args(["-s", "UUID", "-o", "value", device.to_str().unwrap_or_default()]).output() {
+    // 2. Canonicalized UUID Match
+    let target_canonical = std::fs::canonicalize(device).unwrap_or_else(|_| device.to_path_buf());
+    if let Ok(output) = Command::new("blkid").args(["-s", "UUID", "-o", "value", target_canonical.to_str().unwrap_or_default()]).output() {
         let uuid = String::from_utf8_lossy(&output.stdout).trim().to_string();
         if !uuid.is_empty() && fstab.lines().any(|l| !l.starts_with('#') && l.contains(&uuid)) {
             return true;
         }
     }
 
+    // 3. Fallback: Check if the device path in fstab canonicalizes to our target
+    let canonical_str = target_canonical.to_str().unwrap_or_default();
     let dev_str = device.to_str().unwrap_or_default();
-    fstab.lines().any(|l| !l.starts_with('#') && l.contains(dev_str))
+    
+    fstab.lines().any(|l| {
+        if l.starts_with('#') { return false; }
+        let fstab_dev_str = l.split_whitespace().next().unwrap_or_default();
+        
+        // Exact string match check
+        if fstab_dev_str == dev_str || fstab_dev_str == canonical_str {
+            return true;
+        }
+        
+        // Deep canonical check
+        let fstab_dev_path = Path::new(fstab_dev_str);
+        if fstab_dev_path.exists() {
+            let fstab_canonical = std::fs::canonicalize(fstab_dev_path).unwrap_or_else(|_| fstab_dev_path.to_path_buf());
+            return target_canonical == fstab_canonical;
+        }
+        false
+    })
 }
 
 fn probe_block_device_size(path: &Path) -> Result<u64, String> {
+    let target_canonical = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    
     let output = Command::new("lsblk")
-        .args(["-b", "-n", "-o", "SIZE", path.to_str().unwrap_or_default()])
+        .args(["-b", "-n", "-o", "SIZE", target_canonical.to_str().unwrap_or_default()])
         .output()
         .map_err(|e| format!("Failed to execute lsblk: {}", e))?;
 
@@ -92,8 +136,10 @@ fn probe_block_device_size(path: &Path) -> Result<u64, String> {
 }
 
 fn probe_is_full_disk(path: &Path) -> bool {
+    let target_canonical = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    
     Command::new("lsblk")
-        .args(["-n", "-d", "-o", "TYPE", path.to_str().unwrap_or_default()])
+        .args(["-n", "-d", "-o", "TYPE", target_canonical.to_str().unwrap_or_default()])
         .output()
         .map(|o| {
             let out = String::from_utf8_lossy(&o.stdout);
